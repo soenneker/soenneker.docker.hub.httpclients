@@ -1,43 +1,66 @@
 [![](https://img.shields.io/nuget/v/soenneker.docker.hub.httpclients.svg?style=for-the-badge)](https://www.nuget.org/packages/soenneker.docker.hub.httpclients/)
 [![](https://img.shields.io/github/actions/workflow/status/soenneker/soenneker.docker.hub.httpclients/publish-package.yml?style=for-the-badge)](https://github.com/soenneker/soenneker.docker.hub.httpclients/actions/workflows/publish-package.yml)
 [![](https://img.shields.io/nuget/dt/soenneker.docker.hub.httpclients.svg?style=for-the-badge)](https://www.nuget.org/packages/soenneker.docker.hub.httpclients/)
+[![](https://img.shields.io/github/actions/workflow/status/soenneker/soenneker.docker.hub.httpclients/codeql.yml?label=CodeQL&style=for-the-badge)](https://github.com/soenneker/soenneker.docker.hub.httpclients/actions/workflows/codeql.yml)
 
 # Soenneker.Docker.Hub.HttpClients
 
-A .NET thread-safe singleton HttpClient for.
+Provides a cached `HttpClient` configured for the Docker Hub API and bearer authentication.
 
-## Install
+## Installation
 
 ```bash
 dotnet add package Soenneker.Docker.Hub.HttpClients
 ```
 
-## Quick start
+## Configuration
 
-```csharp
-using Soenneker.Docker.Hub.HttpClients.Registrars;
-using Microsoft.Extensions.DependencyInjection;
-
-var services = new ServiceCollection();
-var result = services.AddDockerHubOpenApiHttpClientAsSingleton();
+```json
+{
+  "DockerHub": {
+    "AccessToken": "your-access-token"
+  }
+}
 ```
 
-Adds `DockerHubOpenApiHttpClient` as a singleton service.
+Keep the token in a secret provider rather than source control.
 
-## What you get
+The transport can also be customized with these optional settings:
 
-- `IDockerHubOpenApiHttpClient` — A .NET thread-safe singleton HttpClient for.
-- `DockerHubOpenApiHttpClientRegistrar` — Registers the OpenAPI HttpClient wrapper for dependency injection.
+```json
+{
+  "Hub": {
+    "ClientBaseUrl": "https://hub.docker.com",
+    "AuthHeaderName": "Authorization",
+    "AuthHeaderValueTemplate": "Bearer {token}"
+  }
+}
+```
 
-## API at a glance
+The template replaces every literal `{token}` with `DockerHub:AccessToken`. Treat the base URL, header name, and template as trusted configuration because they determine where and how the credential is sent.
 
-| API | What it does | Result / important behavior |
-| --- | --- | --- |
-| `DockerHubOpenApiHttpClientRegistrar.AddDockerHubOpenApiHttpClientAsSingleton(services)` | Adds `DockerHubOpenApiHttpClient` as a singleton service. | The same service collection, so additional registrations can be chained. |
-| `DockerHubOpenApiHttpClientRegistrar.AddDockerHubOpenApiHttpClientAsScoped(services)` | Adds `DockerHubOpenApiHttpClient` as a scoped service. | The same service collection, so additional registrations can be chained. |
+## Registration and use
 
-## Practical notes
+```csharp
+using Soenneker.Docker.Hub.HttpClients.Abstract;
+using Soenneker.Docker.Hub.HttpClients.Registrars;
 
-- Reuse the registered client instead of constructing one per operation.
-- Calls that return a cached or singleton value reuse the same instance until the owning service is disposed.
-- Dispose instances you own when their scope ends so held resources can be released.
+services.AddDockerHubOpenApiHttpClientAsSingleton();
+
+public sealed class DockerHubTransport(IDockerHubOpenApiHttpClient clientProvider)
+{
+    public async Task<HttpResponseMessage> Send(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        HttpClient client = await clientProvider.Get(cancellationToken);
+        return await client.SendAsync(request, cancellationToken);
+    }
+}
+```
+
+`Get` returns the cached client. Do not dispose the returned `HttpClient`; the registered provider owns the cache entry.
+
+Singleton registration is the normal choice for direct transport use. `AddDockerHubOpenApiHttpClientAsScoped()` scopes the provider but still uses the shared singleton HTTP-client cache; disposing that provider removes its named cache entry.
+
+This package only configures transport. It does not deserialize responses, paginate results, or convert non-success status codes into domain exceptions. Use the companion OpenAPI client utility when you want the generated Docker Hub API surface.

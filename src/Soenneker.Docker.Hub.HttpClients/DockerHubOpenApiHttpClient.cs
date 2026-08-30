@@ -11,7 +11,6 @@ using Soenneker.Utils.HttpClientCache.Abstract;
 
 namespace Soenneker.Docker.Hub.HttpClients;
 
-/// <inheritdoc cref="IDockerHubOpenApiHttpClient"/>
 public sealed class DockerHubOpenApiHttpClient : IDockerHubOpenApiHttpClient
 {
     private readonly IHttpClientCache _httpClientCache;
