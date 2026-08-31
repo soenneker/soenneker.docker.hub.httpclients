@@ -61,6 +61,6 @@ public sealed class DockerHubTransport(IDockerHubOpenApiHttpClient clientProvide
 
 `Get` returns the cached client. Do not dispose the returned `HttpClient`; the registered provider owns the cache entry.
 
-Singleton registration is the normal choice for direct transport use. `AddDockerHubOpenApiHttpClientAsScoped()` scopes the provider but still uses the shared singleton HTTP-client cache; disposing that provider removes its named cache entry.
+Singleton registration is the normal choice for direct transport use. `AddDockerHubOpenApiHttpClientAsScoped()` creates a separately owned cache entry for each scope, so disposing one provider cannot remove another provider's client.
 
 This package only configures transport. It does not deserialize responses, paginate results, or convert non-success status codes into domain exceptions. Use the companion OpenAPI client utility when you want the generated Docker Hub API surface.

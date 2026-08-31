@@ -15,6 +15,7 @@ public sealed class DockerHubOpenApiHttpClient : IDockerHubOpenApiHttpClient
 {
     private readonly IHttpClientCache _httpClientCache;
     private readonly IConfiguration _config;
+    private readonly string _cacheKey = $"{nameof(DockerHubOpenApiHttpClient)}:{Guid.NewGuid():N}";
 
     private const string _prodBaseUrl = "https://hub.docker.com";
 
@@ -26,7 +27,7 @@ public sealed class DockerHubOpenApiHttpClient : IDockerHubOpenApiHttpClient
 
     public ValueTask<HttpClient> Get(CancellationToken cancellationToken = default)
     {
-        return _httpClientCache.Get(nameof(DockerHubOpenApiHttpClient), (config: _config, baseUrl: _config["Hub:ClientBaseUrl"] ?? _prodBaseUrl), static state =>
+        return _httpClientCache.Get(_cacheKey, (config: _config, baseUrl: _config["Hub:ClientBaseUrl"] ?? _prodBaseUrl), static state =>
         {
             var apiKey = state.config.GetValueStrict<string>("DockerHub:AccessToken");
             string authHeaderName = state.config["Hub:AuthHeaderName"] ?? "Authorization";
@@ -46,11 +47,11 @@ public sealed class DockerHubOpenApiHttpClient : IDockerHubOpenApiHttpClient
 
     public void Dispose()
     {
-        _httpClientCache.RemoveSync(nameof(DockerHubOpenApiHttpClient));
+        _httpClientCache.RemoveSync(_cacheKey);
     }
 
     public ValueTask DisposeAsync()
     {
-        return _httpClientCache.Remove(nameof(DockerHubOpenApiHttpClient));
+        return _httpClientCache.Remove(_cacheKey);
     }
 }
