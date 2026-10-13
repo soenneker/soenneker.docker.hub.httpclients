@@ -30,7 +30,7 @@ public sealed class DockerHubOpenApiHttpClient : IDockerHubOpenApiHttpClient
     {
         return _httpClientCache.Get(_cacheKey, (config: _config, baseUrl: _config["Hub:ClientBaseUrl"] ?? _prodBaseUrl), static state =>
         {
-            var apiKey = state.config.GetValueStrict<string>("DockerHub:AccessToken");
+            var apiKey = state.config.GetStringStrict("DockerHub:AccessToken");
             string authHeaderName = state.config["Hub:AuthHeaderName"] ?? "Authorization";
             string authHeaderValueTemplate = state.config["Hub:AuthHeaderValueTemplate"] ?? "Bearer {token}";
             string authHeaderValue = authHeaderValueTemplate.Replace("{token}", apiKey, StringComparison.Ordinal);
